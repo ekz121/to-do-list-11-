@@ -110,6 +110,7 @@
         li .right {
             flex: 1;
             margin: 0 10px;
+            cursor: pointer;
         }
 
         li .right p {
@@ -140,7 +141,7 @@
             text-align: center;
         }
 
-        .bottom a#add-new {
+        .bottom a#add-new, .bottom a#back-button {
             display: inline-block;
             padding: 10px 20px;
             background: linear-gradient(135deg, #4a00e0, #8e2de2);
@@ -148,9 +149,10 @@
             text-decoration: none;
             border-radius: 20px;
             transition: all 0.3s ease;
+            margin: 5px;
         }
 
-        .bottom a#add-new:hover {
+        .bottom a#add-new:hover, .bottom a#back-button:hover {
             background: linear-gradient(135deg, #8e2de2, #4a00e0);
         }
 
@@ -168,6 +170,29 @@
 
         #copyright a:hover {
             color: #4a00e0;
+        }
+
+        /* Notes Section */
+        .notes-section {
+            padding: 20px;
+        }
+
+        .notes-section h3 {
+            font-size: 1.2rem;
+            color: #b3b3b3;
+            margin-bottom: 10px;
+        }
+
+        .notes-section textarea {
+            width: 100%;
+            min-height: 100px;
+            background: #3a3a3a;
+            border: none;
+            border-radius: 10px;
+            padding: 10px;
+            color: #ffffff;
+            resize: vertical;
+            outline: none;
         }
 
         /* Animations */
@@ -229,7 +254,7 @@
 </head>
 <body>
     <div class="wrapper">
-        <div class="app">
+        <div class="app" id="main-app">
             <div class="info">
                 <div class="date">
                     <p id="day"><span id="today">Sunday,</span><span id="daymonth"> 30th</span></p>
@@ -251,9 +276,8 @@
                 </div>
             </div>
 
-            <ul>
+            <ul id="task-list">
                 <p id="today2"><strong>Tasks</strong> for today</p>
-                <!-- Tasks will be dynamically added here -->
             </ul>
 
             <div class="bottom">
@@ -262,6 +286,33 @@
                 </a>
             </div>
         </div>
+
+        <div class="app" id="detail-app" style="display: none;">
+            <div class="info">
+                <div class="date">
+                    <p id="detail-task-title">Task Details</p>
+                </div>
+            </div>
+
+            <ul id="subtask-list">
+                <p id="today2"><strong>Subtasks</strong></p>
+            </ul>
+
+            <div class="notes-section">
+                <h3>Notes</h3>
+                <textarea id="task-notes" placeholder="Add your notes here..."></textarea>
+            </div>
+
+            <div class="bottom">
+                <a href="#" id="add-subtask" onmousedown="return false">
+                    <i class="fas fa-plus"></i> Add new subtask
+                </a>
+                <a href="#" id="back-button" onmousedown="return false">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+            </div>
+        </div>
+
         <p id="copyright">Made by <strong><a href="https://ekazein495.blogspot.com/2025/02/3.html" target="_blank">me</a></strong></p>
     </div>
 
@@ -269,8 +320,10 @@
     <script>
         $(document).ready(function() {
             let check_count = 0, total = 0;
+            let subtask_check_count = 0, subtask_total = 0;
+            let currentTask = null;
 
-            // Custom Functions
+            // Custom Functions for Main Page
             function updateText() {
                 $('#count').text(total);
                 $('#count_done').text(check_count);
@@ -301,12 +354,16 @@
                     { text: "work out", checked: true },
                     { text: "Take a break", checked: false },
                     { text: "go to kampus", checked: false },
-                    { text: "go home", checked: false }
+                    { text: "makan", checked: false, subtasks: [
+                        { text: "sarapan", checked: false },
+                        { text: "makan siang", checked: false },
+                        { text: "makan malam", checked: false }
+                    ], notes: "" }
                 ];
 
                 tasks.forEach((task, index) => {
-                    const li = createTaskElement(task.text, task.checked);
-                    $('ul').append(li);
+                    const li = createTaskElement(task.text, task.checked, task);
+                    $('ul#task-list').append(li);
                     setTimeout(() => {
                         li.addClass('down_in');
                     }, 60 * index);
@@ -316,9 +373,9 @@
                 updateText();
             }
 
-            function createTaskElement(text, checked = false) {
+            function createTaskElement(text, checked = false, taskData = {}) {
                 const li = $(`
-                    <li>
+                    <li data-task='${JSON.stringify(taskData)}'>
                         <a href="#" class="check_button" onmousedown="return false">
                             <i class="${checked ? 'fas fa-check-circle mark' : 'far fa-circle'}" aria-hidden="true"></i>
                         </a>
@@ -339,19 +396,19 @@
             // Add new task
             $('#add-new').click(function(e) {
                 e.preventDefault();
-                const newTask = createTaskElement("New Task");
-                $('ul').append(newTask);
+                const newTask = createTaskElement("New Task", false, { subtasks: [], notes: "" });
+                $('ul#task-list').append(newTask);
                 newTask.addClass('down_in');
                 total++;
                 updateText();
             });
 
             // Check/Uncheck task
-            $('ul').on('click', '.check_button', function(e) {
+            $('ul#task-list').on('click', '.check_button', function(e) {
                 e.preventDefault();
                 const button = $(this).find('i');
-                const index = $('li .check_button').index(this);
-                const text = $('li .right').eq(index).find('p');
+                const index = $('ul#task-list li .check_button').index(this);
+                const text = $('ul#task-list li .right').eq(index).find('p');
 
                 if (button.hasClass('far')) {
                     button.removeClass('far fa-circle').addClass('fas fa-check-circle mark');
@@ -366,15 +423,126 @@
             });
 
             // Delete task
-            $('ul').on('click', '.delete_button', function(e) {
+            $('ul#task-list').on('click', '.delete_button', function(e) {
                 e.preventDefault();
-                const index = $('li .delete_button').index(this);
-                const li = $('li').eq(index);
+                const index = $('ul#task-list li .delete_button').index(this);
+                const li = $('ul#task-list li').eq(index);
                 total--;
                 if (li.find('.check_button i').hasClass('mark')) check_count--;
                 li.addClass('up');
                 setTimeout(() => li.remove(), 600);
                 updateText();
+            });
+
+            // Navigate to detail page
+            $('ul#task-list').on('click', '.right', function() {
+                const li = $(this).closest('li');
+                const taskData = JSON.parse(li.attr('data-task'));
+                currentTask = taskData;
+
+                $('#detail-task-title').text(taskData.text);
+                $('#task-notes').val(taskData.notes || "");
+                loadSubtasks(taskData.subtasks || []);
+
+                $('#main-app').hide();
+                $('#detail-app').show();
+            });
+
+            // Detail Page Functions
+            function loadSubtasks(subtasks) {
+                $('#subtask-list').empty().append('<p id="today2"><strong>Subtasks</strong></p>');
+                subtask_total = 0;
+                subtask_check_count = 0;
+
+                subtasks.forEach((subtask, index) => {
+                    const li = createSubtaskElement(subtask.text, subtask.checked);
+                    $('#subtask-list').append(li);
+                    setTimeout(() => {
+                        li.addClass('down_in');
+                    }, 60 * index);
+                    subtask_total++;
+                    if (subtask.checked) subtask_check_count++;
+                });
+            }
+
+            function createSubtaskElement(text, checked = false) {
+                const li = $(`
+                    <li>
+                        <a href="#" class="check_button" onmousedown="return false">
+                            <i class="${checked ? 'fas fa-check-circle mark' : 'far fa-circle'}" aria-hidden="true"></i>
+                        </a>
+                        <div class="right">
+                            <p contenteditable="true">${text}</p>
+                        </div>
+                        <span class="delete_button" onmousedown="return false">
+                            <i class="fas fa-times-circle" aria-hidden="true"></i>
+                        </span>
+                    </li>
+                `);
+                if (checked) {
+                    li.find('.right p').addClass('line-through').attr("contentEditable", false);
+                }
+                return li;
+            }
+
+            // Add new subtask
+            $('#add-subtask').click(function(e) {
+                e.preventDefault();
+                const newSubtask = createSubtaskElement("New Subtask");
+                $('#subtask-list').append(newSubtask);
+                newSubtask.addClass('down_in');
+                subtask_total++;
+                currentTask.subtasks.push({ text: "New Subtask", checked: false });
+            });
+
+            // Check/Uncheck subtask
+            $('ul#subtask-list').on('click', '.check_button', function(e) {
+                e.preventDefault();
+                const button = $(this).find('i');
+                const index = $('ul#subtask-list li .check_button').index(this);
+                const text = $('ul#subtask-list li .right').eq(index).find('p');
+
+                if (button.hasClass('far')) {
+                    button.removeClass('far fa-circle').addClass('fas fa-check-circle mark');
+                    text.addClass('line-through').attr("contentEditable", false);
+                    subtask_check_count++;
+                    currentTask.subtasks[index].checked = true;
+                } else {
+                    button.removeClass('fas fa-check-circle mark').addClass('far fa-circle');
+                    text.removeClass('line-through').attr('contentEditable', true);
+                    subtask_check_count--;
+                    currentTask.subtasks[index].checked = false;
+                }
+            });
+
+            // Delete subtask
+            $('ul#subtask-list').on('click', '.delete_button', function(e) {
+                e.preventDefault();
+                const index = $('ul#subtask-list li .delete_button').index(this);
+                const li = $('ul#subtask-list li').eq(index);
+                subtask_total--;
+                if (li.find('.check_button i').hasClass('mark')) subtask_check_count--;
+                li.addClass('up');
+                setTimeout(() => li.remove(), 600);
+                currentTask.subtasks.splice(index, 1);
+            });
+
+            // Save notes
+            $('#task-notes').on('input', function() {
+                currentTask.notes = $(this).val();
+            });
+
+            // Back to main page
+            $('#back-button').click(function(e) {
+                e.preventDefault();
+                $('#detail-app').hide();
+                $('#main-app').show();
+                $('ul#task-list li').each(function() {
+                    const taskData = JSON.parse($(this).attr('data-task'));
+                    if (taskData.text === currentTask.text) {
+                        $(this).attr('data-task', JSON.stringify(currentTask));
+                    }
+                });
             });
 
             // Initialize
