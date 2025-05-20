@@ -97,13 +97,20 @@
             background: #4a4a4a;
         }
 
-        li a.check_button i {
+        li a.status_button i {
             font-size: 1.5rem;
-            color: #ffffff;
             transition: all 0.3s ease;
         }
 
-        li a.check_button i.mark {
+        li a.status_button i.todo {
+            color: #ffffff;
+        }
+
+        li a.status_button i.doing {
+            color: #ffaa00;
+        }
+
+        li a.status_button i.done {
             color: #00ff55;
         }
 
@@ -119,7 +126,12 @@
             outline: none;
         }
 
-        li .right p.line-through {
+        li .right p.doing {
+            color: #ffaa00;
+            font-style: italic;
+        }
+
+        li .right p.done {
             text-decoration: line-through;
             color: #b3b3b3;
             font-style: italic;
@@ -172,7 +184,6 @@
             color: #4a00e0;
         }
 
-        /* Notes Section */
         .notes-section {
             padding: 20px;
         }
@@ -195,7 +206,6 @@
             outline: none;
         }
 
-        /* Animations */
         .down_in {
             animation: down_in 0.35s ease;
         }
@@ -232,20 +242,16 @@
             }
         }
 
-        /* Responsive */
         @media (max-width: 400px) {
             .wrapper {
                 max-width: 100%;
             }
-
             .info {
                 padding: 20px;
             }
-
             .info-bottom p {
                 font-size: 1.2rem;
             }
-
             li .right p {
                 font-size: 0.9rem;
             }
@@ -257,8 +263,9 @@
         <div class="app" id="main-app">
             <div class="info">
                 <div class="date">
-                    <p id="day"><span id="today">Sunday,</span><span id="daymonth"> 30th</span></p>
-                    <p id="month">January</p>
+                    <p id="day"><span id="today">Tuesday,</span><span id="daymonth"> 20th</span></p>
+                    <p id="month">May</p>
+                    <p id="time">09:45 AM WIB</p>
                 </div>
                 <div class="info-bottom">
                     <div class="left">
@@ -266,43 +273,37 @@
                         <p id="tasks">Total</p>
                     </div>
                     <div class="middle">
-                        <p id="remaining_done">5</p>
-                        <p id="remaining_tasks">Remaining</p>
+                        <p id="doing_count">5</p>
+                        <p id="doing_tasks">Doing</p>
                     </div>
                     <div class="right">
-                        <p id="count_done">2</p>
-                        <p id="tasks_done">Done</p>
+                        <p id="done_count">2</p>
+                        <p id="done_tasks">Done</p>
                     </div>
                 </div>
             </div>
-
             <ul id="task-list">
                 <p id="today2"><strong>Tasks</strong> for today</p>
             </ul>
-
             <div class="bottom">
                 <a href="#" id="add-new" onmousedown="return false">
                     <i class="fas fa-plus"></i> Add new item
                 </a>
             </div>
         </div>
-
         <div class="app" id="detail-app" style="display: none;">
             <div class="info">
                 <div class="date">
                     <p id="detail-task-title">Task Details</p>
                 </div>
             </div>
-
             <ul id="subtask-list">
                 <p id="today2"><strong>Subtasks</strong></p>
             </ul>
-
             <div class="notes-section">
                 <h3>Notes</h3>
                 <textarea id="task-notes" placeholder="Add your notes here..."></textarea>
             </div>
-
             <div class="bottom">
                 <a href="#" id="add-subtask" onmousedown="return false">
                     <i class="fas fa-plus"></i> Add new subtask
@@ -312,19 +313,16 @@
                 </a>
             </div>
         </div>
-
         <p id="copyright">Made by <strong><a href="https://ekazein495.blogspot.com/2025/02/3.html" target="_blank">me</a></strong></p>
     </div>
-
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function() {
-            let check_count = 0, total = 0;
-            let subtask_check_count = 0, subtask_total = 0;
+            let doing_count = 0, done_count = 0, total = 0;
+            let subtask_doing_count = 0, subtask_done_count = 0, subtask_total = 0;
             let tasks = [];
             let currentTaskIndex = null;
 
-            // Local Storage Functions
             function saveTasks() {
                 localStorage.setItem('tasks', JSON.stringify(tasks));
             }
@@ -334,46 +332,49 @@
                 if (storedTasks) {
                     tasks = JSON.parse(storedTasks);
                 } else {
-                    // Initialize with default tasks if no data in localStorage
                     tasks = [
-                        { text: "wake up 03.00 am", checked: true, subtasks: [], notes: "" },
-                        { text: "pray tahajud", checked: false, subtasks: [], notes: "" },
-                        { text: "jama'ah shubuh", checked: false, subtasks: [], notes: "" },
-                        { text: "work out", checked: true, subtasks: [], notes: "" },
-                        { text: "Take a break", checked: false, subtasks: [], notes: "" },
-                        { text: "go to kampus", checked: false, subtasks: [], notes: "" },
-                        { text: "makan", checked: false, subtasks: [
-                            { text: "sarapan", checked: false },
-                            { text: "makan siang", checked: false },
-                            { text: "makan malam", checked: false }
+                        { text: "wake up 03:00 AM", status: "done", subtasks: [], notes: "" },
+                        { text: "pray tahajud", status: "todo", subtasks: [], notes: "" },
+                        { text: "jama'ah shubuh", status: "todo", subtasks: [], notes: "" },
+                        { text: "work out", status: "done", subtasks: [], notes: "" },
+                        { text: "take a break", status: "todo", subtasks: [], notes: "" },
+                        { text: "go to campus", status: "todo", subtasks: [], notes: "" },
+                        { text: "eat", status: "todo", subtasks: [
+                            { text: "breakfast", status: "todo" },
+                            { text: "lunch", status: "todo" },
+                            { text: "dinner", status: "todo" }
                         ], notes: "" }
                     ];
                 }
                 total = tasks.length;
-                check_count = tasks.filter(task => task.checked).length;
+                doing_count = tasks.filter(task => task.status === "doing").length;
+                done_count = tasks.filter(task => task.status === "done").length;
             }
 
-            // Custom Functions for Main Page
             function updateText() {
                 $('#count').text(total);
-                $('#count_done').text(check_count);
-                $('#remaining_done').text(total - check_count);
+                $('#doing_count').text(doing_count);
+                $('#done_count').text(done_count);
             }
 
-            function showDate() {
-                const suffixMap = { 1: 'st', 2: 'nd', 3: 'rd' };
+            function showDateTime() {
                 const date = new Date();
-                const dayOfMonth = date.getDate();
                 const dayOfWeek = date.getDay();
+                const dayOfMonth = date.getDate();
                 const month = date.getMonth();
-                const suffix = suffixMap[dayOfMonth] || 'th';
+                const hours = date.getHours();
+                const minutes = date.getMinutes();
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                const displayHours = hours % 12 || 12;
 
                 const dayArray = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
                 const monthArray = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                const suffixMap = { 1: 'st', 2: 'nd', 3: 'rd' };
 
                 $('#today').text(dayArray[dayOfWeek] + ",");
-                $('#daymonth').text(" " + dayOfMonth + suffix);
+                $('#daymonth').text(" " + dayOfMonth + (suffixMap[dayOfMonth] || 'th'));
                 $('#month').text(monthArray[month]);
+                $('#time').text(`${displayHours}:${minutes < 10 ? '0' + minutes : minutes} ${ampm} WIB`);
             }
 
             function loadInitialTasks() {
@@ -381,37 +382,37 @@
                 tasks.forEach((task, index) => {
                     const li = createTaskElement(task, index);
                     $('#task-list').append(li);
-                    setTimeout(() => {
-                        li.addClass('down_in');
-                    }, 60 * index);
+                    setTimeout(() => li.addClass('down_in'), 60 * index);
                 });
                 updateText();
             }
 
             function createTaskElement(task, index) {
+                const statusIcon = task.status === "done" ? "fas fa-check-circle done" :
+                                 task.status === "doing" ? "fas fa-circle-notch doing" :
+                                 "far fa-circle todo";
                 const li = $(`
                     <li data-index="${index}">
-                        <a href="#" class="check_button" onmousedown="return false">
-                            <i class="${task.checked ? 'fas fa-check-circle mark' : 'far fa-circle'}" aria-hidden="true"></i>
+                        <a href="#" class="status_button" onmousedown="return false">
+                            <i class="${statusIcon}" aria-hidden="true"></i>
                         </a>
                         <div class="right">
-                            <p contenteditable="true">${task.text}</p>
+                            <p contenteditable="true" class="${task.status}">${task.text}</p>
                         </div>
                         <span class="delete_button" onmousedown="return false">
                             <i class="fas fa-times-circle" aria-hidden="true"></i>
                         </span>
                     </li>
                 `);
-                if (task.checked) {
-                    li.find('.right p').addClass('line-through').attr("contentEditable", false);
+                if (task.status === "doing" || task.status === "done") {
+                    li.find('.right p').attr("contentEditable", false);
                 }
                 return li;
             }
 
-            // Add new task
             $('#add-new').click(function(e) {
                 e.preventDefault();
-                const newTask = { text: "New Task", checked: false, subtasks: [], notes: "" };
+                const newTask = { text: "New Task", status: "todo", subtasks: [], notes: "" };
                 tasks.push(newTask);
                 total++;
                 saveTasks();
@@ -421,106 +422,108 @@
                 updateText();
             });
 
-            // Edit task text
             $('#task-list').on('input', '.right p', function() {
                 const index = $(this).closest('li').data('index');
                 tasks[index].text = $(this).text();
                 saveTasks();
             });
 
-            // Check/Uncheck task
-            $('#task-list').on('click', '.check_button', function(e) {
+            $('#task-list').on('click', '.status_button', function(e) {
                 e.preventDefault();
                 const button = $(this).find('i');
                 const index = $(this).closest('li').data('index');
                 const text = $(this).siblings('.right').find('p');
+                let currentStatus = tasks[index].status;
 
-                if (button.hasClass('far')) {
-                    button.removeClass('far fa-circle').addClass('fas fa-check-circle mark');
-                    text.addClass('line-through').attr("contentEditable", false);
-                    check_count++;
-                    tasks[index].checked = true;
+                if (currentStatus === "todo") {
+                    currentStatus = "doing";
+                    button.removeClass('far fa-circle todo').addClass('fas fa-circle-notch doing');
+                    text.removeClass('todo').addClass('doing').attr("contentEditable", false);
+                    doing_count++;
+                } else if (currentStatus === "doing") {
+                    currentStatus = "done";
+                    button.removeClass('fas fa-circle-notch doing').addClass('fas fa-check-circle done');
+                    text.removeClass('doing').addClass('done').attr("contentEditable", false);
+                    doing_count--;
+                    done_count++;
                 } else {
-                    button.removeClass('fas fa-check-circle mark').addClass('far fa-circle');
-                    text.removeClass('line-through').attr('contentEditable', true);
-                    check_count--;
-                    tasks[index].checked = false;
+                    currentStatus = "todo";
+                    button.removeClass('fas fa-check-circle done').addClass('far fa-circle todo');
+                    text.removeClass('done doing').addClass('todo').attr("contentEditable", true);
+                    done_count--;
                 }
+                tasks[index].status = currentStatus;
                 saveTasks();
                 updateText();
             });
 
-            // Delete task
             $('#task-list').on('click', '.delete_button', function(e) {
                 e.preventDefault();
                 const index = $(this).closest('li').data('index');
                 const li = $(this).closest('li');
+                const status = tasks[index].status;
+                if (status === "doing") doing_count--;
+                if (status === "done") done_count--;
                 total--;
-                if (li.find('.check_button i').hasClass('mark')) check_count--;
                 tasks.splice(index, 1);
                 saveTasks();
                 li.addClass('up');
-                setTimeout(() => {
-                    loadInitialTasks();
-                }, 600);
+                setTimeout(loadInitialTasks, 600);
                 updateText();
             });
 
-            // Navigate to detail page
             $('#task-list').on('click', '.right', function() {
                 const index = $(this).closest('li').data('index');
                 currentTaskIndex = index;
                 const task = tasks[index];
-
                 $('#detail-task-title').text(task.text);
                 $('#task-notes').val(task.notes || "");
                 loadSubtasks(task.subtasks || []);
-
                 $('#main-app').hide();
                 $('#detail-app').show();
             });
 
-            // Detail Page Functions
             function loadSubtasks(subtasks) {
                 $('#subtask-list').empty().append('<p id="today2"><strong>Subtasks</strong></p>');
                 subtask_total = 0;
-                subtask_check_count = 0;
-
+                subtask_doing_count = 0;
+                subtask_done_count = 0;
                 subtasks.forEach((subtask, index) => {
                     const li = createSubtaskElement(subtask, index);
                     $('#subtask-list').append(li);
-                    setTimeout(() => {
-                        li.addClass('down_in');
-                    }, 60 * index);
+                    setTimeout(() => li.addClass('down_in'), 60 * index);
                     subtask_total++;
-                    if (subtask.checked) subtask_check_count++;
+                    if (subtask.status === "doing") subtask_doing_count++;
+                    if (subtask.status === "done") subtask_done_count++;
                 });
             }
 
             function createSubtaskElement(subtask, index) {
+                const statusIcon = subtask.status === "done" ? "fas fa-check-circle done" :
+                                 subtask.status === "doing" ? "fas fa-circle-notch doing" :
+                                 "far fa-circle todo";
                 const li = $(`
                     <li data-index="${index}">
-                        <a href="#" class="check_button" onmousedown="return false">
-                            <i class="${subtask.checked ? 'fas fa-check-circle mark' : 'far fa-circle'}" aria-hidden="true"></i>
+                        <a href="#" class="status_button" onmousedown="return false">
+                            <i class="${statusIcon}" aria-hidden="true"></i>
                         </a>
                         <div class="right">
-                            <p contenteditable="true">${subtask.text}</p>
+                            <p contenteditable="true" class="${subtask.status}">${subtask.text}</p>
                         </div>
                         <span class="delete_button" onmousedown="return false">
                             <i class="fas fa-times-circle" aria-hidden="true"></i>
                         </span>
                     </li>
                 `);
-                if (subtask.checked) {
-                    li.find('.right p').addClass('line-through').attr("contentEditable", false);
+                if (subtask.status === "doing" || subtask.status === "done") {
+                    li.find('.right p').attr("contentEditable", false);
                 }
                 return li;
             }
 
-            // Add new subtask
             $('#add-subtask').click(function(e) {
                 e.preventDefault();
-                const newSubtask = { text: "New Subtask", checked: false };
+                const newSubtask = { text: "New Subtask", status: "todo" };
                 tasks[currentTaskIndex].subtasks.push(newSubtask);
                 saveTasks();
                 const li = createSubtaskElement(newSubtask, tasks[currentTaskIndex].subtasks.length - 1);
@@ -529,56 +532,59 @@
                 subtask_total++;
             });
 
-            // Edit subtask text
             $('#subtask-list').on('input', '.right p', function() {
                 const index = $(this).closest('li').data('index');
                 tasks[currentTaskIndex].subtasks[index].text = $(this).text();
                 saveTasks();
             });
 
-            // Check/Uncheck subtask
-            $('#subtask-list').on('click', '.check_button', function(e) {
+            $('#subtask-list').on('click', '.status_button', function(e) {
                 e.preventDefault();
                 const button = $(this).find('i');
                 const index = $(this).closest('li').data('index');
                 const text = $(this).siblings('.right').find('p');
+                let currentStatus = tasks[currentTaskIndex].subtasks[index].status;
 
-                if (button.hasClass('far')) {
-                    button.removeClass('far fa-circle').addClass('fas fa-check-circle mark');
-                    text.addClass('line-through').attr("contentEditable", false);
-                    subtask_check_count++;
-                    tasks[currentTaskIndex].subtasks[index].checked = true;
+                if (currentStatus === "todo") {
+                    currentStatus = "doing";
+                    button.removeClass('far fa-circle todo').addClass('fas fa-circle-notch doing');
+                    text.removeClass('todo').addClass('doing').attr("contentEditable", false);
+                    subtask_doing_count++;
+                } else if (currentStatus === "doing") {
+                    currentStatus = "done";
+                    button.removeClass('fas fa-circle-notch doing').addClass('fas fa-check-circle done');
+                    text.removeClass('doing').addClass('done').attr("contentEditable", false);
+                    subtask_doing_count--;
+                    subtask_done_count++;
                 } else {
-                    button.removeClass('fas fa-check-circle mark').addClass('far fa-circle');
-                    text.removeClass('line-through').attr('contentEditable', true);
-                    subtask_check_count--;
-                    tasks[currentTaskIndex].subtasks[index].checked = false;
+                    currentStatus = "todo";
+                    button.removeClass('fas fa-check-circle done').addClass('far fa-circle todo');
+                    text.removeClass('done doing').addClass('todo').attr("contentEditable", true);
+                    subtask_done_count--;
                 }
+                tasks[currentTaskIndex].subtasks[index].status = currentStatus;
                 saveTasks();
             });
 
-            // Delete subtask
             $('#subtask-list').on('click', '.delete_button', function(e) {
                 e.preventDefault();
                 const index = $(this).closest('li').data('index');
                 const li = $(this).closest('li');
+                const status = tasks[currentTaskIndex].subtasks[index].status;
+                if (status === "doing") subtask_doing_count--;
+                if (status === "done") subtask_done_count--;
                 subtask_total--;
-                if (li.find('.check_button i').hasClass('mark')) subtask_check_count--;
                 tasks[currentTaskIndex].subtasks.splice(index, 1);
                 saveTasks();
                 li.addClass('up');
-                setTimeout(() => {
-                    loadSubtasks(tasks[currentTaskIndex].subtasks);
-                }, 600);
+                setTimeout(() => loadSubtasks(tasks[currentTaskIndex].subtasks), 600);
             });
 
-            // Save notes
             $('#task-notes').on('input', function() {
                 tasks[currentTaskIndex].notes = $(this).val();
                 saveTasks();
             });
 
-            // Back to main page
             $('#back-button').click(function(e) {
                 e.preventDefault();
                 $('#detail-app').hide();
@@ -586,9 +592,8 @@
                 loadInitialTasks();
             });
 
-            // Initialize
             loadTasksFromStorage();
-            showDate();
+            showDateTime();
             loadInitialTasks();
         });
     </script>
