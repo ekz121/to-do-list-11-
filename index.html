@@ -141,7 +141,7 @@
             text-align: center;
         }
 
-        .bottom a#add-new, .bottom a#back-button {
+        .bottom a#add-new, .bottom a#back-button, .bottom a#add-subtask {
             display: inline-block;
             padding: 10px 20px;
             background: linear-gradient(135deg, #4a00e0, #8e2de2);
@@ -152,7 +152,7 @@
             margin: 5px;
         }
 
-        .bottom a#add-new:hover, .bottom a#back-button:hover {
+        .bottom a#add-new:hover, .bottom a#back-button:hover, .bottom a#add-subtask:hover {
             background: linear-gradient(135deg, #8e2de2, #4a00e0);
         }
 
@@ -321,7 +321,37 @@
         $(document).ready(function() {
             let check_count = 0, total = 0;
             let subtask_check_count = 0, subtask_total = 0;
-            let currentTask = null;
+            let tasks = [];
+            let currentTaskIndex = null;
+
+            // Local Storage Functions
+            function saveTasks() {
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+            }
+
+            function loadTasksFromStorage() {
+                const storedTasks = localStorage.getItem('tasks');
+                if (storedTasks) {
+                    tasks = JSON.parse(storedTasks);
+                } else {
+                    // Initialize with default tasks if no data in localStorage
+                    tasks = [
+                        { text: "wake up 03.00 am", checked: true, subtasks: [], notes: "" },
+                        { text: "pray tahajud", checked: false, subtasks: [], notes: "" },
+                        { text: "jama'ah shubuh", checked: false, subtasks: [], notes: "" },
+                        { text: "work out", checked: true, subtasks: [], notes: "" },
+                        { text: "Take a break", checked: false, subtasks: [], notes: "" },
+                        { text: "go to kampus", checked: false, subtasks: [], notes: "" },
+                        { text: "makan", checked: false, subtasks: [
+                            { text: "sarapan", checked: false },
+                            { text: "makan siang", checked: false },
+                            { text: "makan malam", checked: false }
+                        ], notes: "" }
+                    ];
+                }
+                total = tasks.length;
+                check_count = tasks.filter(task => task.checked).length;
+            }
 
             // Custom Functions for Main Page
             function updateText() {
@@ -347,47 +377,32 @@
             }
 
             function loadInitialTasks() {
-                const tasks = [
-                    { text: "wake up 03.00 am", checked: true },
-                    { text: "pray tahajud", checked: false },
-                    { text: "jama'ah shubuh", checked: false },
-                    { text: "work out", checked: true },
-                    { text: "Take a break", checked: false },
-                    { text: "go to kampus", checked: false },
-                    { text: "makan", checked: false, subtasks: [
-                        { text: "sarapan", checked: false },
-                        { text: "makan siang", checked: false },
-                        { text: "makan malam", checked: false }
-                    ], notes: "" }
-                ];
-
+                $('#task-list').empty().append('<p id="today2"><strong>Tasks</strong> for today</p>');
                 tasks.forEach((task, index) => {
-                    const li = createTaskElement(task.text, task.checked, task);
-                    $('ul#task-list').append(li);
+                    const li = createTaskElement(task, index);
+                    $('#task-list').append(li);
                     setTimeout(() => {
                         li.addClass('down_in');
                     }, 60 * index);
-                    total++;
-                    if (task.checked) check_count++;
                 });
                 updateText();
             }
 
-            function createTaskElement(text, checked = false, taskData = {}) {
+            function createTaskElement(task, index) {
                 const li = $(`
-                    <li data-task='${JSON.stringify(taskData)}'>
+                    <li data-index="${index}">
                         <a href="#" class="check_button" onmousedown="return false">
-                            <i class="${checked ? 'fas fa-check-circle mark' : 'far fa-circle'}" aria-hidden="true"></i>
+                            <i class="${task.checked ? 'fas fa-check-circle mark' : 'far fa-circle'}" aria-hidden="true"></i>
                         </a>
                         <div class="right">
-                            <p contenteditable="true">${text}</p>
+                            <p contenteditable="true">${task.text}</p>
                         </div>
                         <span class="delete_button" onmousedown="return false">
                             <i class="fas fa-times-circle" aria-hidden="true"></i>
                         </span>
                     </li>
                 `);
-                if (checked) {
+                if (task.checked) {
                     li.find('.right p').addClass('line-through').attr("contentEditable", false);
                 }
                 return li;
@@ -396,53 +411,70 @@
             // Add new task
             $('#add-new').click(function(e) {
                 e.preventDefault();
-                const newTask = createTaskElement("New Task", false, { subtasks: [], notes: "" });
-                $('ul#task-list').append(newTask);
-                newTask.addClass('down_in');
+                const newTask = { text: "New Task", checked: false, subtasks: [], notes: "" };
+                tasks.push(newTask);
                 total++;
+                saveTasks();
+                const li = createTaskElement(newTask, tasks.length - 1);
+                $('#task-list').append(li);
+                li.addClass('down_in');
                 updateText();
             });
 
+            // Edit task text
+            $('#task-list').on('input', '.right p', function() {
+                const index = $(this).closest('li').data('index');
+                tasks[index].text = $(this).text();
+                saveTasks();
+            });
+
             // Check/Uncheck task
-            $('ul#task-list').on('click', '.check_button', function(e) {
+            $('#task-list').on('click', '.check_button', function(e) {
                 e.preventDefault();
                 const button = $(this).find('i');
-                const index = $('ul#task-list li .check_button').index(this);
-                const text = $('ul#task-list li .right').eq(index).find('p');
+                const index = $(this).closest('li').data('index');
+                const text = $(this).siblings('.right').find('p');
 
                 if (button.hasClass('far')) {
                     button.removeClass('far fa-circle').addClass('fas fa-check-circle mark');
                     text.addClass('line-through').attr("contentEditable", false);
                     check_count++;
+                    tasks[index].checked = true;
                 } else {
                     button.removeClass('fas fa-check-circle mark').addClass('far fa-circle');
                     text.removeClass('line-through').attr('contentEditable', true);
                     check_count--;
+                    tasks[index].checked = false;
                 }
+                saveTasks();
                 updateText();
             });
 
             // Delete task
-            $('ul#task-list').on('click', '.delete_button', function(e) {
+            $('#task-list').on('click', '.delete_button', function(e) {
                 e.preventDefault();
-                const index = $('ul#task-list li .delete_button').index(this);
-                const li = $('ul#task-list li').eq(index);
+                const index = $(this).closest('li').data('index');
+                const li = $(this).closest('li');
                 total--;
                 if (li.find('.check_button i').hasClass('mark')) check_count--;
+                tasks.splice(index, 1);
+                saveTasks();
                 li.addClass('up');
-                setTimeout(() => li.remove(), 600);
+                setTimeout(() => {
+                    loadInitialTasks();
+                }, 600);
                 updateText();
             });
 
             // Navigate to detail page
-            $('ul#task-list').on('click', '.right', function() {
-                const li = $(this).closest('li');
-                const taskData = JSON.parse(li.attr('data-task'));
-                currentTask = taskData;
+            $('#task-list').on('click', '.right', function() {
+                const index = $(this).closest('li').data('index');
+                currentTaskIndex = index;
+                const task = tasks[index];
 
-                $('#detail-task-title').text(taskData.text);
-                $('#task-notes').val(taskData.notes || "");
-                loadSubtasks(taskData.subtasks || []);
+                $('#detail-task-title').text(task.text);
+                $('#task-notes').val(task.notes || "");
+                loadSubtasks(task.subtasks || []);
 
                 $('#main-app').hide();
                 $('#detail-app').show();
@@ -455,7 +487,7 @@
                 subtask_check_count = 0;
 
                 subtasks.forEach((subtask, index) => {
-                    const li = createSubtaskElement(subtask.text, subtask.checked);
+                    const li = createSubtaskElement(subtask, index);
                     $('#subtask-list').append(li);
                     setTimeout(() => {
                         li.addClass('down_in');
@@ -465,21 +497,21 @@
                 });
             }
 
-            function createSubtaskElement(text, checked = false) {
+            function createSubtaskElement(subtask, index) {
                 const li = $(`
-                    <li>
+                    <li data-index="${index}">
                         <a href="#" class="check_button" onmousedown="return false">
-                            <i class="${checked ? 'fas fa-check-circle mark' : 'far fa-circle'}" aria-hidden="true"></i>
+                            <i class="${subtask.checked ? 'fas fa-check-circle mark' : 'far fa-circle'}" aria-hidden="true"></i>
                         </a>
                         <div class="right">
-                            <p contenteditable="true">${text}</p>
+                            <p contenteditable="true">${subtask.text}</p>
                         </div>
                         <span class="delete_button" onmousedown="return false">
                             <i class="fas fa-times-circle" aria-hidden="true"></i>
                         </span>
                     </li>
                 `);
-                if (checked) {
+                if (subtask.checked) {
                     li.find('.right p').addClass('line-through').attr("contentEditable", false);
                 }
                 return li;
@@ -488,48 +520,62 @@
             // Add new subtask
             $('#add-subtask').click(function(e) {
                 e.preventDefault();
-                const newSubtask = createSubtaskElement("New Subtask");
-                $('#subtask-list').append(newSubtask);
-                newSubtask.addClass('down_in');
+                const newSubtask = { text: "New Subtask", checked: false };
+                tasks[currentTaskIndex].subtasks.push(newSubtask);
+                saveTasks();
+                const li = createSubtaskElement(newSubtask, tasks[currentTaskIndex].subtasks.length - 1);
+                $('#subtask-list').append(li);
+                li.addClass('down_in');
                 subtask_total++;
-                currentTask.subtasks.push({ text: "New Subtask", checked: false });
+            });
+
+            // Edit subtask text
+            $('#subtask-list').on('input', '.right p', function() {
+                const index = $(this).closest('li').data('index');
+                tasks[currentTaskIndex].subtasks[index].text = $(this).text();
+                saveTasks();
             });
 
             // Check/Uncheck subtask
-            $('ul#subtask-list').on('click', '.check_button', function(e) {
+            $('#subtask-list').on('click', '.check_button', function(e) {
                 e.preventDefault();
                 const button = $(this).find('i');
-                const index = $('ul#subtask-list li .check_button').index(this);
-                const text = $('ul#subtask-list li .right').eq(index).find('p');
+                const index = $(this).closest('li').data('index');
+                const text = $(this).siblings('.right').find('p');
 
                 if (button.hasClass('far')) {
                     button.removeClass('far fa-circle').addClass('fas fa-check-circle mark');
                     text.addClass('line-through').attr("contentEditable", false);
                     subtask_check_count++;
-                    currentTask.subtasks[index].checked = true;
+                    tasks[currentTaskIndex].subtasks[index].checked = true;
                 } else {
                     button.removeClass('fas fa-check-circle mark').addClass('far fa-circle');
                     text.removeClass('line-through').attr('contentEditable', true);
                     subtask_check_count--;
-                    currentTask.subtasks[index].checked = false;
+                    tasks[currentTaskIndex].subtasks[index].checked = false;
                 }
+                saveTasks();
             });
 
             // Delete subtask
-            $('ul#subtask-list').on('click', '.delete_button', function(e) {
+            $('#subtask-list').on('click', '.delete_button', function(e) {
                 e.preventDefault();
-                const index = $('ul#subtask-list li .delete_button').index(this);
-                const li = $('ul#subtask-list li').eq(index);
+                const index = $(this).closest('li').data('index');
+                const li = $(this).closest('li');
                 subtask_total--;
                 if (li.find('.check_button i').hasClass('mark')) subtask_check_count--;
+                tasks[currentTaskIndex].subtasks.splice(index, 1);
+                saveTasks();
                 li.addClass('up');
-                setTimeout(() => li.remove(), 600);
-                currentTask.subtasks.splice(index, 1);
+                setTimeout(() => {
+                    loadSubtasks(tasks[currentTaskIndex].subtasks);
+                }, 600);
             });
 
             // Save notes
             $('#task-notes').on('input', function() {
-                currentTask.notes = $(this).val();
+                tasks[currentTaskIndex].notes = $(this).val();
+                saveTasks();
             });
 
             // Back to main page
@@ -537,15 +583,11 @@
                 e.preventDefault();
                 $('#detail-app').hide();
                 $('#main-app').show();
-                $('ul#task-list li').each(function() {
-                    const taskData = JSON.parse($(this).attr('data-task'));
-                    if (taskData.text === currentTask.text) {
-                        $(this).attr('data-task', JSON.stringify(currentTask));
-                    }
-                });
+                loadInitialTasks();
             });
 
             // Initialize
+            loadTasksFromStorage();
             showDate();
             loadInitialTasks();
         });
